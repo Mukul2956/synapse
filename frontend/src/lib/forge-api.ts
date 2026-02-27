@@ -89,18 +89,32 @@ declare const process: { env: Record<string, string | undefined> };
 const API_BASE: string =
   process.env.NEXT_PUBLIC_FORGE_API_URL || "/api/forge";
 
+// ── Safe JSON helper ────────────────────────────────────
+
+async function safeJson<T>(res: Response, fallbackMsg: string): Promise<T> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // The proxy may return raw text ("Internal Server Error") on timeout
+    throw new Error(
+      res.ok ? fallbackMsg : `${res.status}: ${text.slice(0, 200) || fallbackMsg}`
+    );
+  }
+}
+
 // ── Fetch helpers ───────────────────────────────────────
 
 export async function fetchHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error("Health check failed");
-  return res.json();
+  return safeJson<HealthResponse>(res, "Health check returned invalid data");
 }
 
 export async function fetchProviders(): Promise<ProvidersResponse> {
   const res = await fetch(`${API_BASE}/providers`);
   if (!res.ok) throw new Error("Failed to fetch providers");
-  return res.json();
+  return safeJson<ProvidersResponse>(res, "Providers returned invalid data");
 }
 
 export async function transformContent(params: {
@@ -145,7 +159,10 @@ export async function transformContent(params: {
     body: formData,
   });
 
-  const data = await res.json();
+  const data = await safeJson<TransformResponse & { detail?: string }>(
+    res,
+    "Transform request failed"
+  );
   if (!res.ok) throw new Error(data.detail || "Transform request failed");
   return data;
 }
@@ -170,7 +187,10 @@ export async function regenerateContent(params: {
     body: formData,
   });
 
-  const data = await res.json();
+  const data = await safeJson<RegenerateResponse & { detail?: string }>(
+    res,
+    "Regeneration request failed"
+  );
   if (!res.ok) throw new Error(data.detail || "Regeneration request failed");
   return data;
 }
