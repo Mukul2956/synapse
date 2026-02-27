@@ -65,17 +65,13 @@ class CrossPlatformOrchestrator:
     def _get_publishers(self) -> dict:
         """Lazy-load platform publishers to avoid import cycles."""
         if self._publishers is None:
-            from app.integrations.twitter import TwitterPublisher
-            from app.integrations.instagram import InstagramPublisher
+            from app.integrations.reddit import RedditPublisher
             from app.integrations.linkedin import LinkedInPublisher
-            from app.integrations.facebook import FacebookPublisher
             from app.integrations.youtube import YouTubePublisher
 
             self._publishers = {
-                "twitter": TwitterPublisher(),
-                "instagram": InstagramPublisher(),
+                "reddit": RedditPublisher(),
                 "linkedin": LinkedInPublisher(),
-                "facebook": FacebookPublisher(),
                 "youtube": YouTubePublisher(),
             }
         return self._publishers
@@ -204,17 +200,10 @@ class CrossPlatformOrchestrator:
     def _format_content(content: ContentDTO, platform: str) -> dict:
         """Format content according to each platform's constraints."""
         formatters = {
-            "twitter": lambda c: {
-                "text": c.text[:280],
-                "media": c.media_urls[:4] or None,
-            },
-            "instagram": lambda c: {
-                "caption": f"{c.text[:2200]} {' '.join(c.hashtags)}".strip(),
-                "image_url": c.media_urls[0] if c.media_urls else None,
-            },
-            "facebook": lambda c: {
-                "message": c.text[:63206],
-                "link": c.media_urls[0] if c.media_urls else None,
+            "reddit": lambda c: {
+                "title": (c.title or c.text[:300]),
+                "text": c.text[:40000],
+                "subreddit": c.subreddit if hasattr(c, "subreddit") else "test",
             },
             "linkedin": lambda c: {
                 "text": c.text[:3000],

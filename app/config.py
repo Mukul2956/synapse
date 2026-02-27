@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://orbit_user:orbit_pass@localhost:5432/orbit"
     # Sync URL used by Alembic only (psycopg2 driver); not used by the async app
     SYNC_DATABASE_URL: str = ""
+    # Supabase project credentials (optional – used if Supabase client SDK is needed)
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
 
     # ─── Redis ─────────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -24,17 +27,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # ─── Twitter / X ───────────────────────────────────────────────────────────
-    TWITTER_API_KEY: str = ""
-    TWITTER_API_SECRET: str = ""
-    TWITTER_ACCESS_TOKEN: str = ""
-    TWITTER_ACCESS_SECRET: str = ""
-    TWITTER_BEARER_TOKEN: str = ""
-
-    # ─── Instagram / Facebook ──────────────────────────────────────────────────
-    FACEBOOK_APP_ID: str = ""
-    FACEBOOK_APP_SECRET: str = ""
-    INSTAGRAM_ACCESS_TOKEN: str = ""
+    # ─── Reddit ─────────────────────────────────────────────────────────────────
+    REDDIT_CLIENT_ID: str = ""
+    REDDIT_CLIENT_SECRET: str = ""
+    REDDIT_USERNAME: str = ""
+    REDDIT_PASSWORD: str = ""
+    REDDIT_USER_AGENT: str = "ORBIT/1.0"
 
     # ─── LinkedIn ──────────────────────────────────────────────────────────────
     LINKEDIN_CLIENT_ID: str = ""

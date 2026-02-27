@@ -11,7 +11,7 @@ from app.tasks import celery_app
 
 logger = logging.getLogger(__name__)
 
-PLATFORMS = ["twitter", "instagram", "facebook", "linkedin", "youtube"]
+PLATFORMS = ["reddit", "linkedin", "youtube"]
 
 
 def _run(coro):

@@ -107,7 +107,7 @@ def republish_evergreen_content():
                 engine = RepurposingEngine(db)
                 due = await engine.get_due_for_republish(user_id)
                 for entry in due:
-                    await engine.schedule_republish(entry, platforms=list(entry.performance_history.get("platforms", ["twitter"])))
+                    await engine.schedule_republish(entry, platforms=list(entry.performance_history.get("platforms", ["linkedin"])))
                     requeued += 1
             await db.commit()
 

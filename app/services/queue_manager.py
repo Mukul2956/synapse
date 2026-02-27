@@ -58,6 +58,9 @@ class QueueManager:
         # Calculate priority if not provided
         if priority is None:
             priority = self._calculate_initial_priority(is_time_sensitive, is_evergreen)
+        elif isinstance(priority, int) and priority > 1:
+            # Normalize from 1-10 user scale to 0.0-1.0 internal float
+            priority = (priority - 1) / 9.0
 
         decay_rate = self._build_decay_rate(is_time_sensitive, is_evergreen)
 

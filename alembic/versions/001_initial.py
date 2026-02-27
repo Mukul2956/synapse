@@ -56,11 +56,17 @@ def upgrade() -> None:
         sa.Column("recorded_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
     )
     op.create_index("idx_patterns_user_platform", "audience_patterns", ["user_id", "platform", "time_slot"])
-    # Convert to TimescaleDB hypertable – Supabase doesn't support this, so fail silently
+    # Convert to TimescaleDB hypertable – Supabase doesn't support this extension.
+    # We use a savepoint so that when the statement fails, only the savepoint rolls back
+    # rather than aborting the entire transaction (plain try/except is not enough in PG).
+    conn = op.get_bind()
+    conn.execute(sa.text("SAVEPOINT before_hypertable"))
     try:
-        op.execute("SELECT create_hypertable('audience_patterns', 'time_slot', if_not_exists => TRUE);")
+        conn.execute(sa.text("SELECT create_hypertable('audience_patterns', 'time_slot', if_not_exists => TRUE)"))
+        conn.execute(sa.text("RELEASE SAVEPOINT before_hypertable"))
     except Exception:
-        pass  # TimescaleDB not available; table works fine as plain PostgreSQL table
+        conn.execute(sa.text("ROLLBACK TO SAVEPOINT before_hypertable"))
+        # TimescaleDB not available on Supabase – table works fine as plain PostgreSQL table
 
     # ── platform_configs ─────────────────────────────────────────────────────
     op.create_table(

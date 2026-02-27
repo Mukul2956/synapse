@@ -27,13 +27,9 @@ logger = logging.getLogger(__name__)
 
 # ─── Industry-default best posting times (UTC) ────────────────────────────
 PLATFORM_DEFAULTS: dict[str, dict] = {
-    "twitter":   {"hour": 9,  "min": 0, "avoid_weekends": False},
-    "instagram": {"hour": 11, "min": 0, "avoid_weekends": False},
-    "facebook":  {"hour": 13, "min": 0, "avoid_weekends": False},
-    "linkedin":  {"hour": 8,  "min": 0, "avoid_weekends": True},
-    "youtube":   {"hour": 14, "min": 0, "avoid_weekends": False},
-    "tiktok":    {"hour": 19, "min": 0, "avoid_weekends": False},
-    "pinterest": {"hour": 21, "min": 0, "avoid_weekends": False},
+    "reddit":   {"hour": 10, "min": 0, "avoid_weekends": False},
+    "linkedin": {"hour": 8,  "min": 0, "avoid_weekends": True},
+    "youtube":  {"hour": 14, "min": 0, "avoid_weekends": False},
 }
 
 
@@ -44,7 +40,7 @@ class TimingEngine:
     Usage::
 
         engine = TimingEngine(db_session)
-        result = await engine.get_optimal_time(user_id, "twitter", "text")
+        result = await engine.get_optimal_time(user_id, "reddit", "text")
         print(result["optimal_time"])
     """
 

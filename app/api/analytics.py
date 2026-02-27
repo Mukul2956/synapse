@@ -80,7 +80,7 @@ async def get_performance_summary(
 @router.get("/heatmap/{user_id}", response_model=list[AudienceHeatmapPoint])
 async def get_audience_heatmap(
     user_id: uuid.UUID,
-    platform: str = "twitter",
+    platform: str = "linkedin",
     db: AsyncSession = Depends(get_db),
 ):
     """Return a 7×24 engagement heat-map for audience timing optimisation."""

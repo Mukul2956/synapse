@@ -26,7 +26,7 @@ class QueueCreate(BaseModel):
     user_id: uuid.UUID
     platforms: list[str] = Field(..., min_length=1)
     scheduled_time: datetime | None = None
-    priority: float | None = Field(None, ge=0.0, le=1.0)
+    priority: int | None = Field(None, ge=1, le=10)
     requires_approval: bool = False
     content_type: str = "general"
     is_time_sensitive: bool = False
