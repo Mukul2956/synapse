@@ -32,6 +32,7 @@ import {
   Activity,
   Loader2,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import Badge from "@/components/ui/Badge";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -108,6 +109,14 @@ const ACCEPTED_TYPES = [
 /* ── Tab type ────────────────────────────────────────── */
 type OutputTab = "quality" | "analysis" | "pipeline";
 
+/* ── Pipeline stages for progress indicator ──────────── */
+const PIPELINE_STAGES = [
+  { key: "ingestion",     label: "Ingestion",     desc: "Extracting content from sources…",       delay: 3000  },
+  { key: "analysis",      label: "Analysis",       desc: "Analyzing semantics, tone & emotion…",  delay: 15000 },
+  { key: "generation",    label: "Generation",     desc: "Generating script with LLM…",           delay: 40000 },
+  { key: "quality_check", label: "Quality Check",  desc: "Validating output quality…",            delay: 10000 },
+] as const;
+
 /* ================================================================
    FORGE PAGE
    ================================================================ */
@@ -139,7 +148,9 @@ export default function ForgePage() {
   const [outputTab, setOutputTab] = useState<OutputTab>("quality");
   const [providers, setProviders] = useState<ProvidersResponse | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [pipelineStage, setPipelineStage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stageTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ── Fetch providers on mount ──────────────────────── */
   useEffect(() => {
@@ -192,8 +203,30 @@ export default function ForgePage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setPipelineStage(0);
+
+    // Simulate stage progression based on estimated timings
+    let stageIdx = 0;
+    const advanceStage = () => {
+      stageIdx += 1;
+      if (stageIdx < PIPELINE_STAGES.length) {
+        setPipelineStage(stageIdx);
+        stageTimerRef.current = setTimeout(advanceStage, PIPELINE_STAGES[stageIdx].delay);
+      }
+    };
+    stageTimerRef.current = setTimeout(advanceStage, PIPELINE_STAGES[0].delay);
 
     try {
+      // Build duration enforcement hint if the user set a target
+      let finalInstructions = additionalInstructions || "";
+      if (durationSeconds && parseInt(durationSeconds) > 0) {
+        const secs = parseInt(durationSeconds);
+        const approxWords = Math.round(secs * 2.5); // ~150 wpm spoken
+        const approxMinutes = (secs / 60).toFixed(1);
+        const durationHint = `\n\n[DURATION CONSTRAINT — MANDATORY] The output MUST be approximately ${secs} seconds (${approxMinutes} min) of spoken content, which equals roughly ${approxWords} words. Do NOT exceed ${Math.round(approxWords * 1.15)} words. This is a hard limit.`;
+        finalInstructions = finalInstructions.trim() + durationHint;
+      }
+
       const res = await transformContent({
         files: files.length > 0 ? files : undefined,
         textInput: textInput.trim() || undefined,
@@ -203,7 +236,7 @@ export default function ForgePage() {
         durationSeconds: durationSeconds
           ? parseInt(durationSeconds)
           : undefined,
-        additionalInstructions: additionalInstructions || undefined,
+        additionalInstructions: finalInstructions.trim() || undefined,
         preferredProvider: preferredProvider || undefined,
       });
       setResult(res);
@@ -212,6 +245,8 @@ export default function ForgePage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Transform failed");
     } finally {
+      if (stageTimerRef.current) clearTimeout(stageTimerRef.current);
+      stageTimerRef.current = null;
       setLoading(false);
     }
   };
@@ -666,21 +701,70 @@ export default function ForgePage() {
 
           {/* ── Loading state ──────────────────────────── */}
           {loading && !result && (
-            <Card
-              padding="lg"
-              className="flex flex-col items-center justify-center py-20 text-center"
-            >
-              <Loader2
-                size={24}
-                className="text-[#F59E0B] animate-spin mb-4"
-              />
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
-                Transforming content…
-              </h3>
-              <p className="text-xs text-[var(--text-muted)] max-w-xs leading-relaxed">
-                Running pipeline: ingestion → analysis → generation → quality
-                check
-              </p>
+            <Card padding="lg" className="py-12">
+              <div className="mb-6 text-center">
+                <Loader2
+                  size={22}
+                  className="text-[#F59E0B] animate-spin mx-auto mb-3"
+                />
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+                  Transforming content…
+                </h3>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mx-auto max-w-sm mb-5">
+                <div className="progress-bar h-1.5 rounded-full">
+                  <div
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{
+                      width: `${((pipelineStage + 1) / PIPELINE_STAGES.length) * 100}%`,
+                      background: "linear-gradient(90deg, #F59E0B, #FCD34D)",
+                    }}
+                  />
+                </div>
+                <p className="text-center text-[10px] text-[var(--text-muted)] mt-2">
+                  Stage {pipelineStage + 1} of {PIPELINE_STAGES.length}
+                </p>
+              </div>
+
+              {/* Stage steps */}
+              <div className="flex flex-col gap-2 max-w-xs mx-auto">
+                {PIPELINE_STAGES.map((stage, i) => {
+                  const isActive = i === pipelineStage;
+                  const isDone = i < pipelineStage;
+                  return (
+                    <div
+                      key={stage.key}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${
+                        isActive
+                          ? "bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.25)]"
+                          : isDone
+                            ? "opacity-60"
+                            : "opacity-30"
+                      }`}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 size={14} className="text-[#34D399] flex-shrink-0" />
+                      ) : isActive ? (
+                        <Loader2 size={14} className="text-[#F59E0B] animate-spin flex-shrink-0" />
+                      ) : (
+                        <div className="w-3.5 h-3.5 rounded-full border border-[var(--border)] flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium ${isActive ? "text-[#FCD34D]" : isDone ? "text-[var(--text-secondary)]" : "text-[var(--text-muted)]"}`}>
+                          {stage.label}
+                        </p>
+                        {isActive && (
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5 truncate">
+                            {stage.desc}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </Card>
           )}
 
@@ -750,9 +834,53 @@ export default function ForgePage() {
                 {/* Script body */}
                 <div className="p-5 h-[420px] overflow-y-auto">
                   {result.generated_script ? (
-                    <pre className="text-sm text-[var(--text-secondary)] leading-7 whitespace-pre-wrap font-sans">
-                      {result.generated_script}
-                    </pre>
+                    <div className="prose-forge text-sm text-[var(--text-secondary)] leading-7">
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ children }) => (
+                            <h1 className="text-xl font-bold text-[var(--text-primary)] mt-5 mb-2 first:mt-0">{children}</h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-lg font-semibold text-[var(--text-primary)] mt-5 mb-2 first:mt-0">{children}</h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-base font-semibold text-[var(--text-primary)] mt-4 mb-1.5">{children}</h3>
+                          ),
+                          h4: ({ children }) => (
+                            <h4 className="text-sm font-semibold text-[var(--text-primary)] mt-3 mb-1">{children}</h4>
+                          ),
+                          p: ({ children }) => (
+                            <p className="mb-3 leading-7">{children}</p>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
+                          ),
+                          em: ({ children }) => (
+                            <em className="italic text-[var(--text-secondary)]">{children}</em>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc pl-5 mb-3 flex flex-col gap-1">{children}</ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal pl-5 mb-3 flex flex-col gap-1">{children}</ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="leading-relaxed">{children}</li>
+                          ),
+                          blockquote: ({ children }) => (
+                            <blockquote className="border-l-2 border-[#F59E0B] pl-4 my-3 italic text-[var(--text-muted)]">{children}</blockquote>
+                          ),
+                          code: ({ children }) => (
+                            <code className="px-1.5 py-0.5 rounded bg-[var(--bg-muted)] text-[var(--text-primary)] text-xs font-mono">{children}</code>
+                          ),
+                          hr: () => (
+                            <hr className="border-[var(--border)] my-4" />
+                          ),
+                        }}
+                      >
+                        {result.generated_script}
+                      </ReactMarkdown>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <p className="text-xs text-[var(--text-muted)]">

@@ -241,7 +241,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/dashboard" className="inline-flex items-center gap-1 text-xs font-medium transition-all group-hover:gap-1.5" style={{ color }}>
+                <Link href={`/dashboard/${key}`} className="inline-flex items-center gap-1 text-xs font-medium transition-all group-hover:gap-1.5" style={{ color }}>
                   Explore {name} <ArrowRight size={12} />
                 </Link>
               </div>
