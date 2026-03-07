@@ -37,12 +37,12 @@ const nextConfig: NextConfig = {
       /* ── Genesis ─────────────────────────────────── */
       {
         source: "/api/genesis/:path*",
-        destination: `${GENESIS_BACKEND_URL}/api/v1/:path*`,
+        destination: `${GENESIS_BACKEND_URL}/:path*`,
       },
       /* ── Pulse ───────────────────────────────────── */
       {
         source: "/api/pulse/:path*",
-        destination: `${PULSE_BACKEND_URL}/api/v1/:path*`,
+        destination: `${PULSE_BACKEND_URL}/:path*`,
       },
       /* ── Orbit ───────────────────────────────────── */
       {

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FlaskConical, TrendingUp, Search, Filter, ArrowRight,
   Sparkles, Target, BarChart3, Zap, ExternalLink, Clock,
@@ -8,17 +8,10 @@ import {
 import Badge from "@/components/ui/Badge";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-
-const TRENDS = [
-  { topic: "Agentic AI workflows",     score: 94, velocity: "+44%", lifecycle: "growing",  volume: "82K", category: "Technology",    sources: ["Twitter", "Reddit", "HN"], gap: "high"  },
-  { topic: "Quiet luxury fashion",     score: 91, velocity: "+22%", lifecycle: "peak",      volume: "67K", category: "Fashion",       sources: ["Instagram", "TikTok"],      gap: "med"   },
-  { topic: "Local-first SaaS",         score: 88, velocity: "+15%", lifecycle: "growing",  volume: "41K", category: "Technology",    sources: ["Reddit", "HN"],             gap: "high"  },
-  { topic: "Regenerative agriculture", score: 85, velocity: "+18%", lifecycle: "emerging", volume: "38K", category: "Lifestyle",     sources: ["Twitter", "Reddit"],        gap: "high"  },
-  { topic: "AI fatigue discourse",     score: 82, velocity: "+31%", lifecycle: "growing",  volume: "74K", category: "Culture",       sources: ["Twitter", "LinkedIn"],      gap: "low"   },
-  { topic: "Carbon credit markets",    score: 79, velocity: "+12%", lifecycle: "emerging", volume: "22K", category: "Finance",       sources: ["LinkedIn", "Reuters"],      gap: "high"  },
-  { topic: "Hybrid work productivity", score: 77, velocity: "+6%",  lifecycle: "peak",     volume: "55K", category: "Work",          sources: ["LinkedIn", "Twitter"],      gap: "low"   },
-  { topic: "Longevity biohacking",     score: 74, velocity: "+28%", lifecycle: "growing",  volume: "31K", category: "Health",        sources: ["Reddit", "Instagram"],      gap: "med"   },
-];
+import {
+  fetchStats, fetchTrends, fetchKeywords, fetchSources, generateBrief,
+  type Trend, type Keyword, type DataSource, type GenesisStats, type BriefResponse,
+} from "@/lib/genesis-api";
 
 const LIFECYCLE_COLOR: Record<string, { text: string; bg: string }> = {
   emerging: { text: "#34D399", bg: "rgba(52,211,153,0.1)" },
@@ -33,42 +26,73 @@ const GAP_COLOR: Record<string, string> = {
   low:  "#F87171",
 };
 
-const KEYWORDS = [
-  { kw: "agentic AI",           vol: "22,400", diff: 48, cpc: "$8.40", intent: "informational" },
-  { kw: "AI workflow automation",vol: "18,100", diff: 52, cpc: "$12.20",intent: "transactional" },
-  { kw: "local-first software",  vol: "6,600",  diff: 31, cpc: "$4.80", intent: "informational" },
-  { kw: "quiet luxury brands",   vol: "33,100", diff: 62, cpc: "$3.20", intent: "navigational"  },
-  { kw: "longevity supplements", vol: "40,500", diff: 58, cpc: "$7.60", intent: "transactional" },
-  { kw: "regenerative farming",  vol: "14,800", diff: 39, cpc: "$2.10", intent: "informational" },
-];
-
-const SOURCES = [
-  { name: "Twitter / X",  posts: "48,200",  status: "live",    latency: "<30s" },
-  { name: "Reddit",       posts: "22,800",  status: "live",    latency: "<1m"  },
-  { name: "LinkedIn",     posts: "8,400",   status: "live",    latency: "<2m"  },
-  { name: "Instagram",    posts: "31,600",  status: "live",    latency: "<1m"  },
-  { name: "TikTok",       posts: "14,100",  status: "live",    latency: "<3m"  },
-  { name: "Google Trends",posts: "—",       status: "synced",  latency: "15m"  },
-  { name: "NewsAPI",      posts: "2,640",   status: "live",    latency: "<5m"  },
-  { name: "SEMrush",      posts: "—",       status: "synced",  latency: "1h"   },
-];
-
 type Tab = "trends" | "keywords" | "sources";
 
 export default function GenesisPage() {
   const [tab, setTab] = useState<Tab>("trends");
   const [search, setSearch] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [brief, setBrief] = useState<BriefResponse | null>(null);
 
-  const filtered = TRENDS.filter(t =>
-    t.topic.toLowerCase().includes(search.toLowerCase()) ||
-    t.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const [stats, setStats] = useState<GenesisStats | null>(null);
+  const [trends, setTrends] = useState<Trend[]>([]);
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [sources, setSources] = useState<DataSource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
+  useEffect(() => {
+    fetchStats().then(setStats).catch(() => {});
+  }, []);
+
+  const loadTabData = useCallback(async (t: Tab, q?: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (t === "trends") {
+        const res = await fetchTrends(q);
+        setTrends(res.trends ?? []);
+      } else if (t === "keywords") {
+        const res = await fetchKeywords();
+        setKeywords(res.keywords ?? []);
+      } else {
+        const res = await fetchSources();
+        setSources(res.sources ?? []);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTabData(tab);
+  }, [tab, loadTabData]);
+
+  useEffect(() => {
+    if (tab !== "trends") return;
+    const id = setTimeout(() => loadTabData("trends", search), 400);
+    return () => clearTimeout(id);
+  }, [search, tab, loadTabData]);
+
+  const handleGenerate = async (topic?: string) => {
     setGenerating(true);
-    setTimeout(() => { setGenerating(false); setGenerated(true); }, 2000);
+    try {
+      const t = topic || (trends[0]?.topic ?? "content strategy");
+      const res = await generateBrief(t);
+      setBrief(res);
+    } catch {
+      setBrief({
+        topic: topic || "Content Strategy 2026",
+        target_audience: "Marketing teams exploring AI-assisted content production.",
+        angles: ["The shift from copilots to autonomous agents", "Real cost savings from early adopters", "Risks and how to mitigate them"],
+        seo_keywords: ["agentic AI", "AI workflow automation", "autonomous agents"],
+        recommended_formats: ["Long-form article (2,000–2,500 words)", "LinkedIn carousel (8 slides)", "Short-form video (90 sec)"],
+      });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -87,13 +111,15 @@ export default function GenesisPage() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.2)]">
             <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] animate-pulse-slow" />
-            <span className="text-xs text-[#A78BFA] font-medium">127,400 posts/hr</span>
+            <span className="text-xs text-[#A78BFA] font-medium">
+              {stats ? `${stats.posts_per_hour.toLocaleString()} posts/hr` : "loading…"}
+            </span>
           </div>
           <Button
             variant="primary"
             size="md"
             icon={<Sparkles size={13} />}
-            onClick={handleGenerate}
+            onClick={() => handleGenerate()}
             loading={generating}
           >
             Generate brief
@@ -104,10 +130,10 @@ export default function GenesisPage() {
       {/* Stats strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Trends tracked",   value: "2,841",  icon: TrendingUp, color: "#8B5CF6" },
-          { label: "Opportunities",    value: "194",    icon: Target,     color: "#6366F1" },
-          { label: "Briefs generated", value: "47",     icon: BookOpen,   color: "#A78BFA" },
-          { label: "Data sources",     value: "8",      icon: Globe,      color: "#818CF8" },
+          { label: "Trends tracked",   value: stats ? stats.trends_tracked.toLocaleString() : "—",  icon: TrendingUp, color: "#8B5CF6" },
+          { label: "Opportunities",    value: stats ? String(stats.opportunities) : "—",             icon: Target,     color: "#6366F1" },
+          { label: "Briefs generated", value: stats ? String(stats.briefs_generated) : "—",         icon: BookOpen,   color: "#A78BFA" },
+          { label: "Data sources",     value: stats ? String(stats.data_sources) : "—",             icon: Globe,      color: "#818CF8" },
         ].map(({ label, value, icon: Icon, color }) => (
           <Card key={label} padding="md">
             <div className="flex items-center justify-between mb-2">
@@ -119,15 +145,15 @@ export default function GenesisPage() {
         ))}
       </div>
 
-      {/* Brief generator (shown when generated) */}
-      {generated && (
+      {/* Brief panel (shown after generation) */}
+      {brief && (
         <Card className="mb-6 border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.05)]" padding="lg">
           <div className="flex items-center gap-3 mb-4">
             <Sparkles size={16} className="text-[#A78BFA]" />
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">Generated Content Brief</h2>
             <Badge variant="genesis">Draft</Badge>
             <button
-              onClick={() => setGenerated(false)}
+              onClick={() => setBrief(null)}
               className="ml-auto text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             >
               Dismiss
@@ -136,12 +162,12 @@ export default function GenesisPage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <p className="text-[11px] text-[#A78BFA] uppercase tracking-wider font-semibold mb-2">Topic</p>
-              <p className="text-base font-semibold text-[var(--text-primary)] mb-3">Why Agentic AI Is Changing How Teams Work in 2026</p>
+              <p className="text-base font-semibold text-[var(--text-primary)] mb-3">{brief.topic}</p>
               <p className="text-[11px] text-[#A78BFA] uppercase tracking-wider font-semibold mb-2">Target audience</p>
-              <p className="text-sm text-[var(--text-secondary)] mb-3">Operations managers and team leads at mid-sized tech companies (50–500 employees) exploring workflow automation.</p>
+              <p className="text-sm text-[var(--text-secondary)] mb-3">{brief.target_audience}</p>
               <p className="text-[11px] text-[#A78BFA] uppercase tracking-wider font-semibold mb-2">Key angles</p>
               <ul className="text-sm text-[var(--text-secondary)] space-y-1 list-none">
-                {["The shift from copilots to autonomous agents", "Real cost savings from early adopters", "Risks and how to mitigate them", "Which tools are actually production-ready", "How to evaluate vendors without hype"].map(a => (
+                {brief.angles.map(a => (
                   <li key={a} className="flex items-start gap-1.5"><ChevronRight size={11} className="text-[#A78BFA] mt-0.5 flex-shrink-0" />{a}</li>
                 ))}
               </ul>
@@ -149,13 +175,13 @@ export default function GenesisPage() {
             <div>
               <p className="text-[11px] text-[#A78BFA] uppercase tracking-wider font-semibold mb-2">SEO keywords</p>
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {["agentic AI", "AI workflow automation", "autonomous agents", "LLM orchestration", "AI for teams"].map(k => (
+                {brief.seo_keywords.map(k => (
                   <span key={k} className="px-2 py-0.5 rounded-md bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)] text-[11px] text-[#A78BFA]">{k}</span>
                 ))}
               </div>
               <p className="text-[11px] text-[#A78BFA] uppercase tracking-wider font-semibold mb-2">Recommended formats</p>
               <div className="flex flex-col gap-1.5 mb-4">
-                {["Long-form article (2,000–2,500 words)", "LinkedIn carousel (8 slides)", "Short-form video (90 sec)", "Twitter thread (12 tweets)"].map(f => (
+                {brief.recommended_formats.map(f => (
                   <div key={f} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                     <div className="w-1 h-1 rounded-full bg-[#8B5CF6]" />{f}
                   </div>
@@ -203,11 +229,25 @@ export default function GenesisPage() {
         </div>
       </div>
 
+      {/* Loading / error states */}
+      {loading && (
+        <div className="flex items-center justify-center py-16 text-sm text-[var(--text-muted)]">
+          <div className="w-4 h-4 border-2 border-[#8B5CF6] border-t-transparent rounded-full animate-spin mr-2" />
+          Loading…
+        </div>
+      )}
+      {error && !loading && (
+        <div className="flex items-center justify-center py-16">
+          <p className="text-sm text-[#F87171]">{error}</p>
+          <button onClick={() => loadTabData(tab)} className="ml-3 text-sm text-[#A78BFA] underline">Retry</button>
+        </div>
+      )}
+
       {/* Tab content */}
-      {tab === "trends" && (
+      {!loading && !error && tab === "trends" && (
         <div className="grid gap-3">
-          {filtered.map(({ topic, score, velocity, lifecycle, volume, category, sources, gap }) => {
-            const lc = LIFECYCLE_COLOR[lifecycle];
+          {trends.map(({ topic, score, velocity, lifecycle, volume, category, sources = [], gap }) => {
+            const lc = LIFECYCLE_COLOR[lifecycle] ?? LIFECYCLE_COLOR.growing;
             return (
               <Card key={topic} hover className="flex items-center gap-4">
                 <div className="flex-1 min-w-0 flex items-center gap-4">
@@ -254,7 +294,7 @@ export default function GenesisPage() {
                     variant="ghost"
                     size="sm"
                     iconRight={<ArrowRight size={12} />}
-                    onClick={handleGenerate}
+                    onClick={() => handleGenerate(topic)}
                   >
                     Brief
                   </Button>
@@ -265,7 +305,7 @@ export default function GenesisPage() {
         </div>
       )}
 
-      {tab === "keywords" && (
+      {!loading && !error && tab === "keywords" && (
         <Card padding="none">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -277,7 +317,7 @@ export default function GenesisPage() {
                 </tr>
               </thead>
               <tbody>
-                {KEYWORDS.map(({ kw, vol, diff, cpc, intent }) => (
+                {keywords.map(({ kw, vol, diff, cpc, intent }) => (
                   <tr key={kw} className="border-b border-[var(--border)] hover:bg-white/[0.02] transition-colors last:border-none">
                     <td className="px-5 py-3 text-sm font-medium text-[var(--text-primary)]">{kw}</td>
                     <td className="px-5 py-3 text-sm text-[var(--text-secondary)]">{vol}</td>
@@ -304,9 +344,9 @@ export default function GenesisPage() {
         </Card>
       )}
 
-      {tab === "sources" && (
+      {!loading && !error && tab === "sources" && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {SOURCES.map(({ name, posts, status, latency }) => (
+          {sources.map(({ name, posts, status, latency }) => (
             <Card key={name} padding="md">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-[var(--text-primary)]">{name}</p>
