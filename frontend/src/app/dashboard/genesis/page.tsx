@@ -51,7 +51,10 @@ export default function GenesisPage() {
     try {
       if (t === "trends") {
         const res = await fetchTrends(q);
-        setTrends(res.trends ?? []);
+        const unique = (res.trends ?? []).filter(
+          (tr, i, arr) => arr.findIndex((x) => x.topic === tr.topic) === i,
+        );
+        setTrends(unique);
       } else if (t === "keywords") {
         const res = await fetchKeywords();
         setKeywords(res.keywords ?? []);
