@@ -19,6 +19,8 @@ const ORBIT_BACKEND_URL =
   process.env.ORBIT_BACKEND_URL || "http://localhost:8003";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+
   /* Increase proxy timeout to 5 minutes — LLM pipelines are slow */
   httpAgentOptions: {
     keepAlive: true,
