@@ -185,7 +185,7 @@ export default function OrbitPage() {
         setModalPlatforms(["linkedin"]); setModalEvergreen(false);
         setModalTimeSensitive(false); setModalSuccess(null);
       }, 3000);
-    } catch (e: unknown) {
+    } catch (e: any) {
       setModalError(e instanceof Error ? e.message : "Failed to schedule post");
     } finally {
       setModalSubmitting(false);
