@@ -111,6 +111,7 @@ Genesis monitors **100K+ posts/hour** across major platforms and surfaces conten
 - **Keyword explorer** — Search volume, difficulty, CPC, and search intent
 - **Data source monitoring** — Real-time posts/hr and latency per platform feed
 - **Send to Forge** — Push a generated brief directly into the content creation pipeline
+- **Github Link** - https://github.com/ArchedEquation/Genisis
 
 ---
 
@@ -134,6 +135,7 @@ Podcast Script · Video Script · Blog Post · Twitter Thread · Instagram Carou
 - **Quality scoring** — Pass/fail badge, issue detection, word count, estimated duration
 - **Semantic analysis** — Message essence, key topics/entities, sentiment, intent, dominant emotion, tone axes (formality, energy, warmth, humor, authority)
 - **Iterative refinement** — "Revise with feedback" for targeted edits or "Fresh take" for full regeneration
+- **Github Link** - https://github.com/sayantanmandal1/FORGE
 
 ---
 
@@ -151,6 +153,7 @@ Pulse provides real-time performance analytics, AI-powered improvement suggestio
 - **Historical tracking** — View how metrics evolve over time for any analyzed content
 - **Discover Trending** — Live trending content from YouTube and Reddit for competitive intelligence
 - **Cross-platform charts** — Area chart (views & engagement over time) + bar chart (platform comparison)
+- **Github Link** - https://github.com/debashish17/PULSE
 
 **Status Logic:**
 | Condition | Status |
@@ -178,6 +181,7 @@ Orbit handles cross-platform distribution with ML-powered optimal timing and aut
 - **Engagement heatmap** — Hour-by-hour audience activity visualization
 - **Data ingestion** — Sync audience patterns and performance data per platform for ML model training
 - **Trending feeds** — Browse Reddit trending by subreddit and YouTube trending by region/category
+- **Github Link** - https://github.com/Mukul2956/orbit
 
 ---
 
@@ -247,10 +251,10 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 | Variable | Default | Description |
 |---|---|---|
-| `FORGE_BACKEND_URL` | `http://localhost:8000` | Forge microservice URL |
-| `GENESIS_BACKEND_URL` | `http://localhost:8001` | Genesis microservice URL |
-| `PULSE_BACKEND_URL` | `http://localhost:8002` | Pulse microservice URL |
-| `ORBIT_BACKEND_URL` | `http://localhost:8003` | Orbit microservice URL |
+| `FORGE_BACKEND_URL` | `https://forge-v1hj.onrender.com/` | Forge microservice URL |
+| `GENESIS_BACKEND_URL` | `https://genisis-api.onrender.com/` | Genesis microservice URL |
+| `PULSE_BACKEND_URL` | `https://pulse-api-l1xa.onrender.com/` | Pulse microservice URL |
+| `ORBIT_BACKEND_URL` | `https://orbit-kzqc.onrender.comv` | Orbit microservice URL |
 
 ### Public Client URLs (optional overrides)
 
@@ -772,9 +776,9 @@ synapse/
 
 | Name | Role |
 |---|---|
-| **Mukul Singh** | Product & Content Strategy |
+| **Mukul Singh** | Frontend Engineering & UX |
 | **Sayantan Mandal** | Platform Architecture & Backend |
-| **Praneeth Yeddu** | Frontend Engineering & UX |
+| **Praneeth Yeddu** |  Data Analysis and Model Training and Evaluation|
 | **Dibya Debashish Bhoi** | Data Pipelines & Content Engineering |
 
 ---
